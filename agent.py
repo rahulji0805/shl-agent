@@ -95,21 +95,7 @@ def _build_candidate_pool(messages: list[dict]) -> list[dict]:
     """Retrieve a generous candidate pool using the whole conversation as the query."""
     idx = get_index()
     query = " ".join(m.get("content", "") for m in messages if m.get("role") == "user")
-    pool = idx.search(query, k=25)
-    # Also search using just the most recent user message, since a refine
-    # turn's new constraint (e.g. "add AWS and Docker") can get diluted by
-    # earlier turns' text in the combined query above -- this ensures the
-    # newest constraint's best matches are always represented.
-    last_user = next(
-        (m.get("content", "") for m in reversed(messages) if m.get("role") == "user"), ""
-    )
-    if last_user:
-        recent_pool = idx.search(last_user, k=10)
-        existing_names = {p["name"] for p in pool}
-        for item in recent_pool:
-            if item["name"] not in existing_names:
-                pool.append(item)
-                existing_names.add(item["name"])
+    pool = idx.search(query, k=15)
     # Always include OPQ32r and Verify G+ as default contenders since they recur
     # constantly across hiring contexts (matches observed trace behavior).
     for default_name in [
@@ -119,7 +105,7 @@ def _build_candidate_pool(messages: list[dict]) -> list[dict]:
         item = idx.find_by_name(default_name)
         if item and item not in pool:
             pool.append(item)
-    return pool[:30]  # cap to keep prompt size reasonable
+    return pool
 
 
 def _pool_to_context(pool: list[dict]) -> str:
